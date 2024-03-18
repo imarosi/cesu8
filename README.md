@@ -20,9 +20,10 @@ Usage: cesu8 [<options>] file ...
   The file named '-' means stdin.
   Converted output is written to stdout (but see -o)
 Options:
-  -i  --u2c    Convert to CESU-8; i.e. inverse conversion
-      --c2u    Convert to UTF-8; (this is the default)
-  -f  --fix    Fix unpaired surrogates: convert them to '?'
+  -i  --u2c    Convert UTF-8 to CESU-8; i.e. inverse conversion
+      --c2u    Convert CESU-8 to UTF-8; (this is the default)
+  -f  --fix    Fix unpaired surrogates and invalid 4-byte codes:
+               Covert them to '?'
   -v           Verbose mode: report converted codes
   -s           Silent mode: don't report encoding warnings
   -S           Silent mode: don't report file I/O errors and encoding warnings
@@ -33,6 +34,7 @@ If the file is already UTF-8 (or CESU-8 in case of -i), no codes are modified.
 Unpaired surrogate fixing (-f) is possible at CESU-8 to UTF-8 conversion only.
 (Running 'cesu8 -f' on a UTF-8 file fixes unpaired surrogates in that text,
  too, no other text modifications are done.)
+Invalid 4-byte code fixing is possible at UTF-8 to CESU-8 conversion (-i) only.
 ```
 
 ## License
