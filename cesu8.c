@@ -490,7 +490,7 @@ int main(int argc, char **argv)
                 "If the file is already UTF-8 (or CESU-8 in case of -i), no codes are modified.\n"
                 "Unpaired surrogate fixing (-f) is possible at CESU-8 to UTF-8 conversion only.\n"
                 "(Running 'cesu8 -f' on a UTF-8 file fixes unpaired surrogates in that text,\n"
-                " too, no other text modifications are done.)"
+                " too, no other text modifications are done.)\n"
                );
     }
 
