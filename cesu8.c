@@ -68,7 +68,7 @@ const char *outputfile = NULL;      // -o file to write
 bool verbose = false;               // -v
 bool silent = false;                // -s
 bool silentio = false;              // -S
-bool fixsurr = false;               // -f
+bool fixcode = false;               // -f
 bool inverse = false;               // -i    false: CESU-8 to UTF-8 conevrsion; true: UTF-8 to CESU-8 conversion.
 
 FILE *fpi;                          // input FILE pointer
@@ -296,6 +296,27 @@ void convert_four()                                  // convert 4-byte UTF-8 at 
 
     // Unicode value: V VVVV wwww wwyy yyzz zzzz
 
+    if (vvvv < 0 || vvvv > 0x0f) {
+        // overlong UTF-8 (<0) or too large Unicode (>0xf)
+        if (!silent) {
+            int uni = COMB(COMB(COMB(VVVVV, wwwwww, 6), yyyy, 4), zzzzzz, 6);
+            fprintf(stderr, "cesu8: Warning: Invalid 4-byte U+%06x found at %#06llx! %s\n"
+                                                          , uni
+                                                                          , bufpos + rlen
+                                                                                   , fixcode ? "Converted to '?'" : "Left unchanged (see -f)"
+            );
+        }
+        if (fixcode) {
+            obuff[wlen] = '?';
+            rlen += 4;
+            wlen += 1;
+        } else {
+            // not to change: It's enough to copy the first byte now
+            obuff[wlen++] = buff[rlen++];
+        }
+        return;
+    }
+
     if (verbose) {
         int uni = COMB(COMB(COMB(VVVVV, wwwwww, 6), yyyy, 4), zzzzzz, 6);
         fprintf(stderr, "Unicode U+%04x (%lc)\n", uni, uni);
@@ -376,9 +397,9 @@ void convertCesuBuff()                          // CESU-8 to UTF-8
                                                         , high ? "High" : " Low"
                                                                     , utf8_three()
                                                                                     , bufpos + rlen
-                                                                                            , fixsurr ? "Converted to '?'" : "Left unchanged (see -f)"
+                                                                                            , fixcode ? "Converted to '?'" : "Left unchanged (see -f)"
                         );
-                    if (fixsurr) {
+                    if (fixcode) {
                         // step_to(upos) was already called (rpos == upos) and the string up to current position is copied
                         rlen += 3;
                         buff[wlen++] = '?';
@@ -418,6 +439,7 @@ void convertUtfBuff()                           // UTF-8 to CESU-8
                 // convert this UTF-8 code point to CESU-8
                 convert_four();  //  (from buff+rlen to obuff+wlen)
                 // rlen and wlen updated
+                // (In case of wrong 4-byte code '?' is converted)
             } else {
                 // It should not happen... happens only if the UTF-8 encoding is buggy
                 if (!silent)
@@ -443,7 +465,7 @@ int main(int argc, char **argv)
         } else if (strcmp(argv[i], "--c2u") == 0) {
             inverse = false;
         } else if (strcmp(argv[i], "-f") == 0 || strcmp(argv[i], "--fix") == 0) {
-            fixsurr = true;
+            fixcode = true;
         } else if (strcmp(argv[i], "-v") == 0) {
             verbose = true;
         } else if (strcmp(argv[i], "-s") == 0) {
@@ -457,8 +479,6 @@ int main(int argc, char **argv)
         } else {
             // this is the file to convert:
             inputfile = argv[i];
-            if (fixsurr && inverse)
-                fprintf(stderr, "cesu8: Warning: -f and --fix are ignored in inverse conversion mode!\n");
             openFile();
             while (readFile()) {
                 if (inverse)
@@ -478,9 +498,10 @@ int main(int argc, char **argv)
                 "  The file named '-' means stdin.\n"
                 "  Converted output is written to stdout (but see -o)\n"
                 "Options:\n"
-                "  -i  --u2c    Convert to CESU-8; i.e. inverse conversion\n"
-                "      --c2u    Convert to UTF-8; (this is the default)\n"
-                "  -f  --fix    Fix unpaired surrogates: convert them to '?'\n"
+                "  -i  --u2c    Convert UTF-8 to CESU-8; i.e. inverse conversion\n"
+                "      --c2u    Convert CESU-8 to UTF-8; (this is the default)\n"
+                "  -f  --fix    Fix unpaired surrogates and invalid 4-byte codes:\n"
+                "               Covert them to '?'\n"
                 "  -v           Verbose mode: report converted codes\n"
                 "  -s           Silent mode: don't report encoding warnings\n"
                 "  -S           Silent mode: don't report file I/O errors and encoding warnings\n"
@@ -491,6 +512,7 @@ int main(int argc, char **argv)
                 "Unpaired surrogate fixing (-f) is possible at CESU-8 to UTF-8 conversion only.\n"
                 "(Running 'cesu8 -f' on a UTF-8 file fixes unpaired surrogates in that text,\n"
                 " too, no other text modifications are done.)\n"
+                "Invalid 4-byte code fixing is possible at UTF-8 to CESU-8 conversion (-i) only.\n"
                );
     }
 
